@@ -1269,7 +1269,7 @@ class AvS_FastSimpleImport_Model_Import_Entity_Product extends AvS_FastSimpleImp
      */
     protected function _filterRowData(&$rowData)
     {
-        if ($this->_unsetEmptyFields || $this->_symbolEmptyFields || $this->_symbolIgnoreFields) {
+        if ($this->_unsetEmptyFields || $this->_symbolEmptyFields || $this->_symbolIgnoreFields || '###BLANK###') {
             foreach($rowData as $key => $fieldValue) {
                 if ($this->_unsetEmptyFields && !strlen($fieldValue)) {
                     unset($rowData[$key]);
@@ -1277,6 +1277,8 @@ class AvS_FastSimpleImport_Model_Import_Entity_Product extends AvS_FastSimpleImp
                     $rowData[$key] = NULL;
                 } else if ($this->_symbolIgnoreFields && trim($fieldValue) == $this->_symbolIgnoreFields) {
                     unset($rowData[$key]);
+                } else if ('###BLANK###' && trim($fieldValue) == '###BLANK###') {
+                    $rowData[$key] = '';
                 }
             }
         }
