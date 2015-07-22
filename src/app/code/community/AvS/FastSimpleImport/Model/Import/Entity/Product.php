@@ -24,6 +24,11 @@ if (@class_exists('Enterprise_ImportExport_Model_Import_Entity_Product')) {
 class AvS_FastSimpleImport_Model_Import_Entity_Product extends AvS_FastSimpleImport_Model_Import_Entity_Product_Abstract
 {
     /**
+     * Col Category position
+     */
+    const COL_CATEGORY_POSITION = '_category_position';
+
+    /**
      * Code of a primary attribute which identifies the entity group if import contains of multiple rows
      *
      * @var string
@@ -77,6 +82,12 @@ class AvS_FastSimpleImport_Model_Import_Entity_Product extends AvS_FastSimpleImp
         'custom_design',
         'country_of_manufacture'
     );
+
+    public function __construct()
+    {
+        $this->_particularAttributes[] = self::COL_CATEGORY_POSITION;
+        parent::__construct();
+    }
 
     public function setIgnoreDuplicates($ignore)
     {
@@ -1032,7 +1043,11 @@ class AvS_FastSimpleImport_Model_Import_Entity_Product extends AvS_FastSimpleImp
                     $categoryId = $this->_categoriesWithRoots[$rowData[self::COL_ROOT_CATEGORY]][$categoryPath];
                     $categories[$rowSku][$categoryId] = true;
                 } elseif (!empty($categoryPath)) {
-                    $categories[$rowSku][$this->_categories[$categoryPath]] = true;
+                    if (!empty($rowData['_category_position'])) {
+                        $categories[$rowSku][$this->_categories[$categoryPath]] = $rowData['_category_position'];
+                    } else {
+                        $categories[$rowSku][$this->_categories[$categoryPath]] = true;
+                    }
                 } elseif (array_key_exists(self::COL_CATEGORY, $rowData)) {
                     $categories[$rowSku] = array();
                 }
@@ -1497,6 +1512,58 @@ class AvS_FastSimpleImport_Model_Import_Entity_Product extends AvS_FastSimpleImp
         return $this;
     }
 
+
+    /**
+     * Save product categories.
+     *
+     * Overridden to make it possible to set the position within the category. By default,
+     * $categoriesData looks like this (5 and 8 are the category ids):
+     * array(
+     *    'sku123' => array( 5 => true, 18 => true)
+     * );
+     *
+     * In the new form the data looks like this (20 and 10 are the positions):
+     * array(
+     *    'sku123' => array( 5 => 20, 18 => 10)
+     * );
+     *
+     * @param array $categoriesData
+     * @return Mage_ImportExport_Model_Import_Entity_Product
+     */
+    protected function _saveProductCategories(array $categoriesData)
+    {
+        static $tableName = null;
+
+        if (!$tableName) {
+            $tableName = Mage::getModel('importexport/import_proxy_product_resource')->getProductCategoryTable();
+        }
+        if ($categoriesData) {
+            $categoriesIn = array();
+            $delProductId = array();
+
+            foreach ($categoriesData as $delSku => $categories) {
+                $productId      = $this->_newSku[$delSku]['entity_id'];
+                $delProductId[] = $productId;
+
+                foreach ($categories as $categoryId => $position) {
+                    if ($position === true) {
+                        $position = 1;
+                    }
+                    $categoriesIn[] = array('product_id' => $productId, 'category_id' => $categoryId, 'position' => $position);
+                }
+            }
+            if (Mage_ImportExport_Model_Import::BEHAVIOR_APPEND != $this->getBehavior()) {
+                $this->_connection->delete(
+                    $tableName,
+                    $this->_connection->quoteInto('product_id IN (?)', $delProductId)
+                );
+            }
+            if ($categoriesIn) {
+                $this->_connection->insertOnDuplicate($tableName, $categoriesIn, array('position'));
+            }
+        }
+        return $this;
+    }
 
     /**
      * Common validation
