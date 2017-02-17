@@ -27,6 +27,7 @@ class AvS_FastSimpleImport_Model_Import_Entity_Product extends AvS_FastSimpleImp
      * Col Category position
      */
     const COL_CATEGORY_POSITION = '_category_position';
+    const COL_CLEAR_TIERS       = '_clear_tiers';
 
     /**
      * Code of a primary attribute which identifies the entity group if import contains of multiple rows
@@ -86,6 +87,7 @@ class AvS_FastSimpleImport_Model_Import_Entity_Product extends AvS_FastSimpleImp
     public function __construct()
     {
         $this->_particularAttributes[] = self::COL_CATEGORY_POSITION;
+        $this->_particularAttributes[] = self::COL_CLEAR_TIERS;
         parent::__construct();
     }
 
@@ -1062,6 +1064,9 @@ class AvS_FastSimpleImport_Model_Import_Entity_Product extends AvS_FastSimpleImp
                         'website_id'        => (self::VALUE_ALL == $rowData['_tier_price_website'] || $priceIsGlobal)
                             ? 0 : $this->_websiteCodeToId[$rowData['_tier_price_website']]
                     );
+                }
+                if (!empty($rowData['_clear_tiers'])) {
+                    $tierPrices[$rowSku] = [];
                 }
                 if (!empty($rowData['_group_price_website'])) { // 4.2. Group prices phase
                     $groupPrices[$rowSku][] = array(
